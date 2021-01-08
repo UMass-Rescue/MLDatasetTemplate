@@ -1,0 +1,29 @@
+version: "3.8"
+services:
+  server:
+    stdin_open: true
+    container_name: ${DATASET_NAME}
+    command: uvicorn src.server.main:app --host 0.0.0.0 --port ${PORT} --debug --reload-dir /app --log-level debug
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+      - DATASET_LOCATION=${DATASET_LOCATION}
+    volumes:
+      - ./:/app
+      - dataset:/app/src/dataset
+      - public_dataset:/app/src/public_dataset
+    ports:
+      - ${PORT}:${PORT}
+
+volumes:
+  dataset:
+    name: ${DATASET_NAME}_vol
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: ${DATASET_LOCATION}
+  public_dataset:
+    name: ${DATASET_NAME}_public_vol
