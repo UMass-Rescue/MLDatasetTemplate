@@ -1,3 +1,5 @@
+import os
+
 import requests
 import time
 
@@ -33,3 +35,33 @@ def register_model_to_server(server_port, model_port, model_name):
 
     logger.debug("[Healthcheck] Server Registration Thread Halted.")
 
+
+async def send_model_results_to_server(training_id, training_results):
+    """
+    Send machine learning results to server.
+    """
+    if not dependency.connected:
+        print('Unable to send training results to server. Connection is not established.')
+        return
+
+    headers = {
+        'api_key': API_KEY
+    }
+    model_name = os.getenv('NAME')
+    server_port = os.getenv('SERVER_PORT')
+
+    try:
+        r = requests.post(
+            'http://host.docker.internal:' + str(server_port) + '/training/result',
+            headers=headers,
+            json={
+                'model_name': model_name,
+                'training_id': training_id,
+                'results': training_results
+            })
+        r.raise_for_status()
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
+        print('Unable to send training results to server. Established connection unsuccessful.')
+        return
+
+    print("[Training Results] Sent training results to server.")

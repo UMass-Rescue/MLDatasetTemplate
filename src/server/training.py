@@ -1,6 +1,8 @@
 from src.server.dependency import logger
 import tensorflow as tf
 
+from src.server.server_connection import send_model_results_to_server
+
 
 def train_model(training_id, model_structure, loss_function, optimizer, n_epochs):
     logger.debug('[Training] Starting to train model ID: ' + training_id)
@@ -29,13 +31,10 @@ def train_model(training_id, model_structure, loss_function, optimizer, n_epochs
         batch_size=batch_size
     )
 
-    class_names = train_ds.class_names
-    print(class_names)
+    autotune_buf_size = tf.data.AUTOTUNE
 
-    AUTOTUNE = tf.data.AUTOTUNE
-
-    train_ds = train_ds.cache().shuffle(1000).prefetch(buffer_size=AUTOTUNE)
-    validation_ds = validation_ds.cache().prefetch(buffer_size=AUTOTUNE)
+    train_ds = train_ds.cache().shuffle(1000).prefetch(buffer_size=autotune_buf_size)
+    validation_ds = validation_ds.cache().prefetch(buffer_size=autotune_buf_size)
 
     model = tf.keras.models.model_from_json(model_structure)
 
@@ -60,6 +59,7 @@ def train_model(training_id, model_structure, loss_function, optimizer, n_epochs
         'validation_loss': val_loss[-1]
     }
 
-    logger.debug(result)
+    print(result)
 
-    return result
+    # Send HTTP request to server with the statistics on this training
+    send_model_results_to_server(training_id, result)
