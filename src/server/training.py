@@ -1,55 +1,65 @@
-from keras_preprocessing.image import ImageDataGenerator
-
-from src.server import dependency
-from src.server.dependency import logger, dataset_settings
+from src.server.dependency import logger
 import tensorflow as tf
 
 
-def train_model(training_id):
-    logger.debug('[Training] Starting to train model')
+def train_model(training_id, model_structure, loss_function, optimizer, n_epochs):
+    logger.debug('[Training] Starting to train model ID: ' + training_id)
 
     dataset_root = '/app/src/public_dataset'
-    image_generator = ImageDataGenerator(rescale=1. / 255, validation_split=0.3)
 
-    img_height = 250
-    img_width = 250
+    img_height = 28
+    img_width = 28
+    batch_size = 32
 
-    train_gen = image_generator.flow_from_directory(
-        directory=str(dataset_root),
-        shuffle=True,
-        target_size=(img_height, img_width),
-        classes=dataset_settings.classes,
-        class_mode='binary',
-        subset='training'
+    train_ds = tf.keras.preprocessing.image_dataset_from_directory(
+        dataset_root,
+        validation_split=0.2,
+        subset="training",
+        seed=123,
+        image_size=(img_height, img_width),
+        batch_size=batch_size
     )
 
-    test_gen = image_generator.flow_from_directory(
-        directory=str(dataset_root),
-        shuffle=True,
-        target_size=(img_height, img_width),
-        classes=dataset_settings.classes,
-        class_mode='binary',
-        subset='validation'
+    validation_ds = tf.keras.preprocessing.image_dataset_from_directory(
+        dataset_root,
+        validation_split=0.2,
+        subset="validation",
+        seed=123,
+        image_size=(img_height, img_width),
+        batch_size=batch_size
     )
 
-    dataset_settings.train_generator = train_gen
-    dataset_settings.test_generator = test_gen
-    logger.debug('Dataset Settings Updated')
+    class_names = train_ds.class_names
+    print(class_names)
 
-    model = tf.keras.Sequential([
-        tf.keras.layers.Flatten(input_shape=(250, 250)),
-        tf.keras.layers.Dense(128, activation='relu'),
-        tf.keras.layers.Dense(5749)
-    ])
+    AUTOTUNE = tf.data.AUTOTUNE
 
-    model.compile(optimizer='adam',
+    train_ds = train_ds.cache().shuffle(1000).prefetch(buffer_size=AUTOTUNE)
+    validation_ds = validation_ds.cache().prefetch(buffer_size=AUTOTUNE)
+
+    model = tf.keras.models.model_from_json(model_structure)
+
+    model.compile(optimizer=optimizer,
                   loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                   metrics=['accuracy'])
 
-    model.fit(dataset_settings.train_generator, epochs=10)
+    history = model.fit(train_ds, validation_data=validation_ds, epochs=n_epochs)
 
-    test_loss, test_acc = model.evaluate(dataset_settings.test_generator, verbose=2)
+    acc = history.history['accuracy']
+    val_acc = history.history['val_accuracy']
 
-    logger.debug('[Training] Model Training Complete')
+    loss = history.history['loss']
+    val_loss = history.history['val_loss']
 
-    return training_id, test_loss, test_acc
+    logger.debug('[Training] Completed training on model ID: ' + training_id)
+
+    result = {
+        'training_accuracy': acc[-1],
+        'validation_accuracy': val_acc[-1],
+        'training_loss': loss[-1],
+        'validation_loss': val_loss[-1]
+    }
+
+    logger.debug(result)
+
+    return result

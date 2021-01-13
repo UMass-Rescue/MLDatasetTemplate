@@ -2,7 +2,7 @@ version: "3.8"
 services:
   server:
     stdin_open: true
-    container_name: ${DATASET_NAME}
+    container_name: ${DATASET_NAME}_server
     command: uvicorn src.server.main:app --host 0.0.0.0 --port ${PORT} --debug --reload-dir /app --log-level debug
     build:
       context: ./
@@ -16,6 +16,28 @@ services:
       - public_dataset:/app/src/public_dataset
     ports:
       - ${PORT}:${PORT}
+  redis:
+    image: redis:latest
+    container_name: dataset_redis
+    ports:
+      - 6379:6379  # Non-default port used as to not conflict with server
+    volumes:
+      - ./redis/:/redis.conf
+    command: [ "redis-server", "/redis.conf" ]
+  worker:
+    container_name: ${DATASET_NAME}_worker_1
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/app
+      - dataset:/app/src/dataset
+      - public_dataset:/app/src/public_dataset
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+    depends_on:
+      - redis
+    command: python3 src/server/worker.py
 
 volumes:
   dataset:

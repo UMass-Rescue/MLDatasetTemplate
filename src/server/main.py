@@ -1,7 +1,9 @@
-from fastapi import FastAPI, status, Request, UploadFile, File
+import json
+
+from fastapi import FastAPI, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-import hashlib
+import uuid
 import time
 
 from starlette.responses import JSONResponse
@@ -10,7 +12,7 @@ from dotenv import load_dotenv
 import os
 
 from src.server import dependency
-from src.server.dependency import dataset_settings, TrainingException, pool, logger
+from src.server.dependency import dataset_settings, TrainingException, pool, logger, ModelData, training_queue
 from src.server.server_connection import register_model_to_server
 from src.server.training import train_model
 from src.server.utility import setup_dataset
@@ -127,13 +129,13 @@ async def get_dataset_details():
 
 
 @app.post("/train")
-async def start_model_training(model_file: UploadFile = File(...)):
+async def start_model_training(model_data: ModelData):
     """
     Begins the training process for a model on this dataset. This method must be called after the init() method
     has run at least once, otherwise this will fail with a HTTP Error. The input is a python file that contains the
     training code for the model
 
-    :param model_file: Python file object containing model code to run for training
+    :param model_data: Python file object containing model code to run for training
     :return: JSON indicating training initiation success/failure and the job ID
     """
 
@@ -141,14 +143,15 @@ async def start_model_training(model_file: UploadFile = File(...)):
     if not dataset_settings.ready_to_train:
         raise TrainingException()
 
-    hash_str = 'dataset['+str(time.time())+']'+model_file.filename
-    training_id = hashlib.md5(hash_str.encode('utf-8'))
+    training_id = str(uuid.uuid4())
 
-    # train_model(training_id)
+    training_queue.enqueue(train_model, training_id, model_data.model_structure, model_data.loss_function,
+                           model_data.optimizer, model_data.n_epochs, job_id=training_id)
 
     return {
         'status': 'success',
-        "id": training_id.hexdigest(),
+        'detail': 'Job has been enqueued and is pending',
+        "id": training_id,
     }
 
 

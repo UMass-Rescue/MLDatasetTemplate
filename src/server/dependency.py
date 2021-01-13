@@ -2,9 +2,9 @@ import logging
 from concurrent.futures.thread import ThreadPoolExecutor
 from typing import List
 
-from pydantic import BaseSettings
-
-logger = logging.getLogger("api")
+from pydantic import BaseSettings, BaseModel, Json
+from rq import Queue
+import redis as rd
 
 
 class Settings(BaseSettings):
@@ -14,12 +14,21 @@ class Settings(BaseSettings):
     extensions: List[str] = []
 
 
-dataset_settings = Settings()
-
-
 class TrainingException(Exception):
     pass
 
+
+class ModelData(BaseModel):
+    model_structure: str
+    loss_function: str
+    optimizer: str
+    n_epochs: int
+
+
+redis_instance = rd.Redis(host='dataset_redis', port=6379)
+training_queue = Queue("training", connection=redis_instance)
+logger = logging.getLogger("api")
+dataset_settings = Settings()
 
 connected = False
 shutdown = False

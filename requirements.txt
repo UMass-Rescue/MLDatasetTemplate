@@ -12,3 +12,5 @@ starlette
 tensorflow
 matplotlib
 numpy
+rq
+redis
