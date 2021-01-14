@@ -25,7 +25,7 @@ class ModelData(BaseModel):
     n_epochs: int
 
 
-redis_instance = rd.Redis(host='dataset_redis', port=6379)
+redis_instance = rd.Redis(host='dataset_redis', port=6381)
 training_queue = Queue("training", connection=redis_instance)
 logger = logging.getLogger("api")
 dataset_settings = Settings()

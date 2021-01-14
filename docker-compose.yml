@@ -20,10 +20,8 @@ services:
     image: redis:latest
     container_name: dataset_redis
     ports:
-      - 6379:6379  # Non-default port used as to not conflict with server
-    volumes:
-      - ./redis/:/redis.conf
-    command: [ "redis-server", "/redis.conf" ]
+      - 6381:6381  # Non-default port used as to not conflict with server
+    command: [ "redis-server", "--port", "6381" ]
   worker:
     container_name: ${DATASET_NAME}_worker_1
     build:

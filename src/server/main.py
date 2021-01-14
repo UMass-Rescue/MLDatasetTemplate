@@ -25,7 +25,7 @@ origins = [
     "http://localhost:3000",
     "http://localhost:5057",
     "http://localhost:5000",
-    "http://localhost:6379",
+    "http://localhost:6381",
 ]
 
 
@@ -79,7 +79,7 @@ def initial_startup():
         setup_dataset()
         dataset_settings.ready_to_train = True
         logger.debug('Finishing Dataset Initialization Process.')
-        pool.submit(register_model_to_server, os.getenv('SERVER_PORT'), os.getenv('PORT'), os.getenv('NAME'))
+        pool.submit(register_model_to_server, os.getenv('SERVER_PORT'), os.getenv('PORT'), os.getenv('DATASET_NAME'))
 
     pool.submit(init_dataset_helper)
     return {"status": "success", 'detail': 'server startup in progress'}
