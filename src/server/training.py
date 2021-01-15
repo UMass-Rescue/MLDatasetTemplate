@@ -1,7 +1,10 @@
+import os
+
+import requests
+from secrets import API_KEY
+
 from src.server.dependency import logger
 import tensorflow as tf
-
-from src.server.server_connection import send_model_results_to_server
 
 
 def train_model(training_id, model_structure, loss_function, optimizer, n_epochs):
@@ -59,7 +62,22 @@ def train_model(training_id, model_structure, loss_function, optimizer, n_epochs
         'validation_loss': val_loss[-1]
     }
 
-    print(result)
-
     # Send HTTP request to server with the statistics on this training
-    send_model_results_to_server(training_id, result)
+
+    headers = {
+        'api_key': API_KEY
+    }
+    dataset_name = os.getenv('DATASET_NAME')
+    server_port = os.getenv('SERVER_PORT')
+
+    r = requests.post(
+        'http://host.docker.internal:' + str(server_port) + '/training/result',
+        headers=headers,
+        json={
+            'dataset_name': dataset_name,
+            'training_id': training_id,
+            'results': result
+        })
+    r.raise_for_status()
+
+    print("[Training Results] Sent training results to server.")

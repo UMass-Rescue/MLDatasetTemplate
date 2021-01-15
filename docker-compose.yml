@@ -33,6 +33,8 @@ services:
       - public_dataset:/app/src/public_dataset
     environment:
       - GUNICORN_CMD_ARGS=--reload
+      - DATASET_NAME=${DATASET_NAME}
+      - SERVER_PORT=${SERVER_PORT}
     depends_on:
       - redis
     command: python3 src/server/worker.py

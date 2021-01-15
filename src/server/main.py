@@ -22,6 +22,8 @@ app = FastAPI()
 # Must have CORSMiddleware to enable localhost client and server
 origins = [
     "http://localhost",
+    "http://host.docker.internal",
+    "http://host.docker.internal:5000",
     "http://localhost:3000",
     "http://localhost:5057",
     "http://localhost:5000",
