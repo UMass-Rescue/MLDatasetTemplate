@@ -147,8 +147,7 @@ async def start_model_training(model_data: ModelData):
 
     training_id = str(uuid.uuid4())
 
-    training_queue.enqueue(train_model, training_id, model_data.model_structure, model_data.loss_function,
-                           model_data.optimizer, model_data.n_epochs, job_id=training_id)
+    training_queue.enqueue(train_model, training_id, model_data, job_id=training_id)
 
     return {
         'status': 'success',

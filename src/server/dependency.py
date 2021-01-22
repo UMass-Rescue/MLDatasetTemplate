@@ -23,6 +23,9 @@ class ModelData(BaseModel):
     loss_function: str
     optimizer: str
     n_epochs: int
+    seed: int = 123
+    split: float = 0.2
+    batch_size: int = 32
 
 
 redis_instance = rd.Redis(host='dataset_redis', port=6381)

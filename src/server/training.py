@@ -3,57 +3,63 @@ import os
 import requests
 from secrets import API_KEY
 
-from src.server.dependency import logger
+from src.server.dependency import ModelData
 import tensorflow as tf
 
 
-def train_model(training_id, model_structure, loss_function, optimizer, n_epochs):
-    logger.debug('[Training] Starting to train model ID: ' + training_id)
+def train_model(training_id, model_data: ModelData):
+    acc = [-1]
+    val_acc = [-1]
 
-    dataset_root = '/app/src/public_dataset'
+    loss = [-1]
+    val_loss = [-1]
+    try:
+        print('[Training] Starting to train model ID: ' + training_id)
 
-    img_height = 28
-    img_width = 28
-    batch_size = 32
+        dataset_root = '/app/src/public_dataset'
 
-    train_ds = tf.keras.preprocessing.image_dataset_from_directory(
-        dataset_root,
-        validation_split=0.2,
-        subset="training",
-        seed=123,
-        image_size=(img_height, img_width),
-        batch_size=batch_size
-    )
+        img_height = 28
+        img_width = 28
 
-    validation_ds = tf.keras.preprocessing.image_dataset_from_directory(
-        dataset_root,
-        validation_split=0.2,
-        subset="validation",
-        seed=123,
-        image_size=(img_height, img_width),
-        batch_size=batch_size
-    )
+        train_ds = tf.keras.preprocessing.image_dataset_from_directory(
+            dataset_root,
+            validation_split=model_data.split,
+            subset="training",
+            seed=model_data.seed,
+            image_size=(img_height, img_width),
+            batch_size=model_data.batch_size
+        )
 
-    autotune_buf_size = tf.data.AUTOTUNE
+        validation_ds = tf.keras.preprocessing.image_dataset_from_directory(
+            dataset_root,
+            validation_split=model_data.split,
+            subset="validation",
+            seed=model_data.seed,
+            image_size=(img_height, img_width),
+            batch_size=model_data.batch_size
+        )
 
-    train_ds = train_ds.cache().shuffle(1000).prefetch(buffer_size=autotune_buf_size)
-    validation_ds = validation_ds.cache().prefetch(buffer_size=autotune_buf_size)
+        autotune_buf_size = tf.data.AUTOTUNE
 
-    model = tf.keras.models.model_from_json(model_structure)
+        train_ds = train_ds.cache().shuffle(1000).prefetch(buffer_size=autotune_buf_size)
+        validation_ds = validation_ds.cache().prefetch(buffer_size=autotune_buf_size)
 
-    model.compile(optimizer=optimizer,
-                  loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-                  metrics=['accuracy'])
+        model = tf.keras.models.model_from_json(model_data.model_structure)
 
-    history = model.fit(train_ds, validation_data=validation_ds, epochs=n_epochs)
+        model.compile(optimizer=model_data.optimizer,
+                      loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                      metrics=['accuracy'])
 
-    acc = history.history['accuracy']
-    val_acc = history.history['val_accuracy']
+        history = model.fit(train_ds, validation_data=validation_ds, epochs=model_data.n_epochs)
 
-    loss = history.history['loss']
-    val_loss = history.history['val_loss']
+        acc = history.history['accuracy']
+        val_acc = history.history['val_accuracy']
 
-    logger.debug('[Training] Completed training on model ID: ' + training_id)
+        loss = history.history['loss']
+        val_loss = history.history['val_loss']
+        print('[Training] Completed training on model ID: ' + training_id)
+    except:
+        print('[Training] Critical error on training: ' + training_id)
 
     result = {
         'training_accuracy': acc[-1],
