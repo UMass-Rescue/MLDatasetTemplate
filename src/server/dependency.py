@@ -26,6 +26,7 @@ class ModelData(BaseModel):
     seed: int = 123
     split: float = 0.2
     batch_size: int = 32
+    save: bool = False
 
 
 redis_instance = rd.Redis(host='dataset_redis', port=6381)

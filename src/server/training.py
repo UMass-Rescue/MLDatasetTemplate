@@ -1,5 +1,6 @@
 import os
-
+import tempfile
+import shutil
 import requests
 from secrets import API_KEY
 
@@ -13,6 +14,7 @@ def train_model(training_id, model_data: ModelData):
 
     loss = [-1]
     val_loss = [-1]
+    print("Save:" + str(model_data.save))
     try:
         print('[Training] Starting to train model ID: ' + training_id)
 
@@ -58,6 +60,33 @@ def train_model(training_id, model_data: ModelData):
         loss = history.history['loss']
         val_loss = history.history['val_loss']
         print('[Training] Completed training on model ID: ' + training_id)
+
+        # If we are saving the model, we must save it to folder, zip that folder,
+        # and then send the zip file to the server via HTTP requests
+        if model_data.save:
+            print('[Training] Preparing to save Model data on model ID: ' + training_id)
+
+            # Create temp dir and save model to it
+            tmpdir = tempfile.mkdtemp()
+            model_save_path = os.path.join(tmpdir, training_id)
+
+            # Save model nested 1 more layer down to facilitate unzipping
+            tf.saved_model.save(model, os.path.join(model_save_path, training_id))
+
+            shutil.make_archive(model_save_path, 'zip', model_save_path)
+
+            print(tmpdir)
+
+            files = {'model': open(model_save_path+'.zip', 'rb')}
+            requests.post(
+                'http://host.docker.internal:' + str(os.getenv('SERVER_PORT')) + '/training/model',
+                headers={'api_key': API_KEY},
+                params={'training_id': training_id},
+                files=files 
+            )
+
+            print('[Training] Sent SavedModel file data on model ID: ' + training_id)
+
     except:
         print('[Training] Critical error on training: ' + training_id)
 
@@ -70,17 +99,11 @@ def train_model(training_id, model_data: ModelData):
 
     # Send HTTP request to server with the statistics on this training
 
-    headers = {
-        'api_key': API_KEY
-    }
-    dataset_name = os.getenv('DATASET_NAME')
-    server_port = os.getenv('SERVER_PORT')
-
     r = requests.post(
-        'http://host.docker.internal:' + str(server_port) + '/training/result',
-        headers=headers,
+        'http://host.docker.internal:' + str(os.getenv('SERVER_PORT')) + '/training/result',
+        headers={'api_key': API_KEY},
         json={
-            'dataset_name': dataset_name,
+            'dataset_name': os.getenv('DATASET_NAME'),
             'training_id': training_id,
             'results': result
         })
